@@ -24,6 +24,17 @@ export const WeComConfigSchema = z
   .strict();
 
 export type WeComConfig = z.infer<typeof WeComConfigSchema>;
+export type WeComGroupConfig = {
+  requireMention?: boolean;
+  tools?: {
+    allow?: string[];
+    deny?: string[];
+  };
+  skills?: string[];
+  enabled?: boolean;
+  allowFrom?: Array<string | number>;
+  systemPrompt?: string;
+};
 
 export interface ResolvedWeComAccount {
   accountId: string;
@@ -33,4 +44,6 @@ export interface ResolvedWeComAccount {
   corpId?: string;
   agentId?: string;
   config?: WeComConfig;
+  token?: string;
+  encodingAESKey?: string;
 }

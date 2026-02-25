@@ -63,6 +63,14 @@ export async function handleWeComMessage({
     const chatType = event.ChatType ?? (chatId ? "group" : "single");
     const isGroupChat = chatType === "group" || !!chatId;
 
+    // Check for duplicate messages
+    const { tryRecordMessagePersistent } = await import("./dedup.js");
+    const isNew = await tryRecordMessagePersistent(messageId, accountId, log);
+    if (!isNew) {
+      log(`wecom[${accountId}]: duplicate message ${messageId}, skipping`);
+      return;
+    }
+
     log(`wecom[${accountId}]: received ${msgType} message from ${userId} in ${isGroupChat ? "group" : "DM"}`);
 
     // Build session key
@@ -148,16 +156,42 @@ export async function handleWeComMessage({
     }
 
     // For group chats, check if bot should respond
-    // In WeCom, we need to check if message mentions the bot or matches policy
+    // Check group policy and allowlist
     if (isGroupChat) {
       const account = resolveWeComAccount({ cfg, accountId });
-      const requireMention = account.config?.requireMention ?? true;
+      const wecomCfg = account.config;
       
-      // For now, simple implementation: only respond if @mentioned or requireMention is false
-      // TODO: Implement proper @mention detection for WeCom
+      // Import policy functions
+      const { resolveWeComReplyPolicy, isWeComGroupAllowed } = await import("./policy.js");
+      const { resolveDefaultGroupPolicy, resolveAllowlistProviderRuntimeGroupPolicy } = await import("openclaw/plugin-sdk");
+      
+      const defaultGroupPolicy = resolveDefaultGroupPolicy(cfg);
+      const { groupPolicy, groupAllowFrom } = resolveAllowlistProviderRuntimeGroupPolicy({
+        providerConfigPresent: cfg.channels?.wecom !== undefined,
+        groupPolicy: wecomCfg?.groupPolicy,
+        groupAllowFrom: wecomCfg?.groupAllowFrom,
+        defaultGroupPolicy,
+      });
+      
+      // Check if group is allowed
+      if (!isWeComGroupAllowed({
+        groupPolicy,
+        allowFrom: groupAllowFrom,
+        senderId: userId,
+      })) {
+        log(`wecom[${accountId}]: group ${chatId} not in allowlist, skipping`);
+        return;
+      }
+      
+      // Check mention policy
+      const { requireMention } = resolveWeComReplyPolicy({
+        isDirectMessage: false,
+        globalConfig: wecomCfg,
+      });
+      
       if (requireMention) {
-        // Skip if no mention detected (WeCom doesn't provide mention info in basic events)
-        // This is a limitation - proper implementation would need to parse Content for @mentions
+        // TODO: Implement proper @mention detection for WeCom
+        // For now, skip if requireMention is true (WeCom doesn't provide mention info in basic events)
         log(`wecom[${accountId}]: group message without mention, skipping (requireMention=true)`);
         return;
       }

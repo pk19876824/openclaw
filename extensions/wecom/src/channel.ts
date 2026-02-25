@@ -14,6 +14,7 @@ import { wecomOutbound } from "./outbound.js";
 import { probeWeCom } from "./probe.js";
 import { sendMessageWeCom } from "./send.js";
 import { normalizeWeComTarget, looksLikeWeComId } from "./targets.js";
+import { resolveWeComGroupToolPolicy } from "./policy.js";
 import type { ResolvedWeComAccount, WeComConfig } from "./types.js";
 
 const meta: ChannelMeta = {
@@ -56,6 +57,9 @@ export const wecomPlugin: ChannelPlugin<ResolvedWeComAccount> = {
     messageToolHints: () => [
       "- WeCom targeting: omit `target` to reply to the current conversation (auto-inferred). Explicit targets: `user:userid`.",
     ],
+  },
+  groups: {
+    resolveToolPolicy: resolveWeComGroupToolPolicy,
   },
   reload: { configPrefixes: ["channels.wecom"] },
   configSchema: {

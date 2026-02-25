@@ -1,6 +1,7 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
 import { wecomPlugin } from "./src/channel.js";
+import { setWeComRuntime } from "./src/runtime.js";
 
 export { sendMessageWeCom, sendGroupMessageWeCom } from "./src/send.js";
 export { probeWeCom } from "./src/probe.js";
@@ -23,6 +24,7 @@ const plugin = {
   description: "WeCom (企业微信) channel plugin",
   configSchema: emptyPluginConfigSchema(),
   register(api: OpenClawPluginApi) {
+    setWeComRuntime(api.runtime);
     api.registerChannel({ plugin: wecomPlugin });
   },
 };
