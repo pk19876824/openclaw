@@ -1,5 +1,9 @@
 {
   "id": "wecom",
-  "name": "WeCom",
-  "description": "WeCom (企业微信) channel plugin"
+  "channels": ["wecom"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
 }
