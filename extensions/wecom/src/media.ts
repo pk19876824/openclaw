@@ -152,6 +152,88 @@ export async function sendFileWeCom({
 }
 
 /**
+ * Send image to group chat
+ */
+export async function sendGroupImageWeCom({
+  cfg,
+  chatId,
+  mediaId,
+  accountId,
+}: {
+  cfg: ClawdbotConfig;
+  chatId: string;
+  mediaId: string;
+  accountId?: string;
+}): Promise<void> {
+  const accessToken = await getWeComAccessToken({ cfg, accountId });
+
+  const url = `https://qyapi.weixin.qq.com/cgi-bin/appchat/send?access_token=${accessToken}`;
+
+  const body = {
+    chatid: chatId,
+    msgtype: "image",
+    image: {
+      media_id: mediaId,
+    },
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json();
+
+  if (data.errcode !== 0) {
+    throw new Error(`Failed to send group image: ${data.errmsg}`);
+  }
+}
+
+/**
+ * Send file to group chat
+ */
+export async function sendGroupFileWeCom({
+  cfg,
+  chatId,
+  mediaId,
+  accountId,
+}: {
+  cfg: ClawdbotConfig;
+  chatId: string;
+  mediaId: string;
+  accountId?: string;
+}): Promise<void> {
+  const accessToken = await getWeComAccessToken({ cfg, accountId });
+
+  const url = `https://qyapi.weixin.qq.com/cgi-bin/appchat/send?access_token=${accessToken}`;
+
+  const body = {
+    chatid: chatId,
+    msgtype: "file",
+    file: {
+      media_id: mediaId,
+    },
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json();
+
+  if (data.errcode !== 0) {
+    throw new Error(`Failed to send group file: ${data.errmsg}`);
+  }
+}
+
+/**
  * Send markdown message
  */
 export async function sendMarkdownWeCom({

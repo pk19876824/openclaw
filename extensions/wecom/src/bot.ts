@@ -31,6 +31,9 @@ export interface WeComMessageEvent {
   Label?: string; // 地理位置信息
   // Link message
   Url?: string; // 链接地址
+  // Group chat
+  ChatId?: string; // 群聊 ID (when in group)
+  ChatType?: string; // 聊天类型: single (单聊) or group (群聊)
 }
 
 /**
@@ -56,11 +59,16 @@ export async function handleWeComMessage({
     const userId = event.FromUserName;
     const messageId = event.MsgId;
     const msgType = event.MsgType;
+    const chatId = event.ChatId;
+    const chatType = event.ChatType ?? (chatId ? "group" : "single");
+    const isGroupChat = chatType === "group" || !!chatId;
 
-    log(`wecom[${accountId}]: received ${msgType} message from ${userId}`);
+    log(`wecom[${accountId}]: received ${msgType} message from ${userId} in ${isGroupChat ? "group" : "DM"}`);
 
     // Build session key
-    const sessionKey = `wecom:${accountId}:user:${userId}`;
+    const sessionKey = isGroupChat
+      ? `wecom:${accountId}:group:${chatId}`
+      : `wecom:${accountId}:user:${userId}`;
 
     // Get or create history
     let history = chatHistories.get(sessionKey);
@@ -139,11 +147,42 @@ export async function handleWeComMessage({
         return;
     }
 
+    // For group chats, check if bot should respond
+    // In WeCom, we need to check if message mentions the bot or matches policy
+    if (isGroupChat) {
+      const account = resolveWeComAccount({ cfg, accountId });
+      const requireMention = account.config?.requireMention ?? true;
+      
+      // For now, simple implementation: only respond if @mentioned or requireMention is false
+      // TODO: Implement proper @mention detection for WeCom
+      if (requireMention) {
+        // Skip if no mention detected (WeCom doesn't provide mention info in basic events)
+        // This is a limitation - proper implementation would need to parse Content for @mentions
+        log(`wecom[${accountId}]: group message without mention, skipping (requireMention=true)`);
+        return;
+      }
+    }
+
+    // Get sender name for group chats
+    let senderName = userId;
+    if (isGroupChat) {
+      try {
+        const { getUserInfoWeCom } = await import("./directory.js");
+        const userInfo = await getUserInfoWeCom({ cfg, userId, accountId });
+        senderName = userInfo.name || userId;
+      } catch (err) {
+        log(`wecom[${accountId}]: failed to get sender name: ${String(err)}`);
+      }
+    }
+
+    // Prefix message with sender name in group chats
+    const displayMessage = isGroupChat ? `${senderName}: ${messageText}` : messageText;
+
     // Record user message in history
     recordPendingHistoryEntryIfEnabled({
       history,
       role: "user",
-      content: messageText,
+      content: displayMessage,
       externalKey: messageId,
     });
 
@@ -160,13 +199,14 @@ export async function handleWeComMessage({
 
     const agentRequest: any = {
       sessionKey,
-      message: messageText,
+      message: displayMessage,
       context: {
         channel: "wecom",
         accountId: accountId ?? "default",
         userId,
         messageId,
-        chatType: "direct",
+        chatType: isGroupChat ? "group" : "direct",
+        chatId: isGroupChat ? chatId : undefined,
         history: historyContext,
       },
     };
@@ -178,14 +218,25 @@ export async function handleWeComMessage({
 
     const response = await runtimeEnv.invokeAgent(agentRequest);
 
-    // Send response back to user
+    // Send response back
     if (response?.text) {
-      await sendMessageWeCom({
-        cfg,
-        to: userId,
-        text: response.text,
-        accountId,
-      });
+      if (isGroupChat && chatId) {
+        // Send to group chat
+        await sendGroupMessageWeCom({
+          cfg,
+          chatId,
+          text: response.text,
+          accountId,
+        });
+      } else {
+        // Send to user
+        await sendMessageWeCom({
+          cfg,
+          to: userId,
+          text: response.text,
+          accountId,
+        });
+      }
 
       // Record assistant response in history
       recordPendingHistoryEntryIfEnabled({
@@ -208,7 +259,12 @@ export async function handleWeComMessage({
               filename: media.filename ?? "image.jpg",
               accountId,
             });
-            await sendImageWeCom({ cfg, to: userId, mediaId, accountId });
+            
+            if (isGroupChat && chatId) {
+              await sendGroupImageWeCom({ cfg, chatId, mediaId, accountId });
+            } else {
+              await sendImageWeCom({ cfg, to: userId, mediaId, accountId });
+            }
           } else if (media.type === "file" && media.data) {
             const { uploadMediaWeCom } = await import("./media.js");
             const mediaId = await uploadMediaWeCom({
@@ -218,7 +274,12 @@ export async function handleWeComMessage({
               filename: media.filename ?? "file",
               accountId,
             });
-            await sendFileWeCom({ cfg, to: userId, mediaId, accountId });
+            
+            if (isGroupChat && chatId) {
+              await sendGroupFileWeCom({ cfg, chatId, mediaId, accountId });
+            } else {
+              await sendFileWeCom({ cfg, to: userId, mediaId, accountId });
+            }
           }
         } catch (err) {
           error(`wecom[${accountId}]: failed to send media: ${String(err)}`);
@@ -235,14 +296,26 @@ export async function handleWeComMessage({
   } catch (err) {
     error(`wecom[${accountId}]: error handling message: ${String(err)}`);
     
-    // Try to send error message to user
+    // Try to send error message
     try {
-      await sendMessageWeCom({
-        cfg,
-        to: event.FromUserName,
-        text: "抱歉，处理消息时出现错误。",
-        accountId,
-      });
+      const chatId = event.ChatId;
+      const isGroupChat = event.ChatType === "group" || !!chatId;
+      
+      if (isGroupChat && chatId) {
+        await sendGroupMessageWeCom({
+          cfg,
+          chatId,
+          text: "抱歉，处理消息时出现错误。",
+          accountId,
+        });
+      } else {
+        await sendMessageWeCom({
+          cfg,
+          to: event.FromUserName,
+          text: "抱歉，处理消息时出现错误。",
+          accountId,
+        });
+      }
     } catch (sendErr) {
       error(`wecom[${accountId}]: failed to send error message: ${String(sendErr)}`);
     }

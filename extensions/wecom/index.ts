@@ -2,7 +2,7 @@ import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
 import { wecomPlugin } from "./src/channel.js";
 
-export { sendMessageWeCom } from "./src/send.js";
+export { sendMessageWeCom, sendGroupMessageWeCom } from "./src/send.js";
 export { probeWeCom } from "./src/probe.js";
 export { monitorWeComProvider } from "./src/monitor.js";
 export {
@@ -11,6 +11,8 @@ export {
   sendImageWeCom,
   sendFileWeCom,
   sendMarkdownWeCom,
+  sendGroupImageWeCom,
+  sendGroupFileWeCom,
 } from "./src/media.js";
 export { getUserInfoWeCom, getDepartmentListWeCom, getDepartmentUsersWeCom } from "./src/directory.js";
 export { wecomPlugin } from "./src/channel.js";

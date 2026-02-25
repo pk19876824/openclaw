@@ -41,3 +41,44 @@ export async function sendMessageWeCom({
     throw new Error(`Failed to send WeCom message: ${data.errmsg}`);
   }
 }
+
+/**
+ * Send message to group chat
+ */
+export async function sendGroupMessageWeCom({
+  cfg,
+  chatId,
+  text,
+  accountId,
+}: {
+  cfg: ClawdbotConfig;
+  chatId: string;
+  text: string;
+  accountId?: string;
+}): Promise<void> {
+  const accessToken = await getWeComAccessToken({ cfg, accountId });
+
+  const url = `https://qyapi.weixin.qq.com/cgi-bin/appchat/send?access_token=${accessToken}`;
+
+  const body = {
+    chatid: chatId,
+    msgtype: "text",
+    text: {
+      content: text,
+    },
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json();
+
+  if (data.errcode !== 0) {
+    throw new Error(`Failed to send group message: ${data.errmsg}`);
+  }
+}
