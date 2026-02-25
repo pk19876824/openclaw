@@ -5,6 +5,14 @@ import { wecomPlugin } from "./src/channel.js";
 export { sendMessageWeCom } from "./src/send.js";
 export { probeWeCom } from "./src/probe.js";
 export { monitorWeComProvider } from "./src/monitor.js";
+export {
+  downloadMediaWeCom,
+  uploadMediaWeCom,
+  sendImageWeCom,
+  sendFileWeCom,
+  sendMarkdownWeCom,
+} from "./src/media.js";
+export { getUserInfoWeCom, getDepartmentListWeCom, getDepartmentUsersWeCom } from "./src/directory.js";
 export { wecomPlugin } from "./src/channel.js";
 
 const plugin = {

@@ -47,7 +47,7 @@ export const wecomPlugin: ChannelPlugin<ResolvedWeComAccount> = {
     chatTypes: ["direct", "channel"],
     polls: false,
     threads: false,
-    media: false,
+    media: true,
     reactions: false,
     edit: false,
     reply: false,
@@ -160,9 +160,74 @@ export const wecomPlugin: ChannelPlugin<ResolvedWeComAccount> = {
   },
   directory: {
     self: async () => null,
-    listPeers: async () => [],
+    listPeers: async ({ cfg, query, limit, accountId }) => {
+      const { getDepartmentUsersWeCom } = await import("./directory.js");
+      try {
+        // Get users from root department (1)
+        const users = await getDepartmentUsersWeCom({
+          cfg,
+          departmentId: "1",
+          fetchChild: true,
+          accountId,
+        });
+
+        let filtered = users;
+        if (query) {
+          const lowerQuery = query.toLowerCase();
+          filtered = users.filter(
+            (u) =>
+              u.name.toLowerCase().includes(lowerQuery) ||
+              u.userid.toLowerCase().includes(lowerQuery),
+          );
+        }
+
+        if (limit && limit > 0) {
+          filtered = filtered.slice(0, limit);
+        }
+
+        return filtered.map((u) => ({
+          id: u.userid,
+          name: u.name,
+          type: "user" as const,
+        }));
+      } catch {
+        return [];
+      }
+    },
     listGroups: async () => [],
-    listPeersLive: async () => [],
+    listPeersLive: async ({ cfg, query, limit, accountId }) => {
+      const { getDepartmentUsersWeCom } = await import("./directory.js");
+      try {
+        const users = await getDepartmentUsersWeCom({
+          cfg,
+          departmentId: "1",
+          fetchChild: true,
+          accountId,
+        });
+
+        let filtered = users;
+        if (query) {
+          const lowerQuery = query.toLowerCase();
+          filtered = users.filter(
+            (u) =>
+              u.name.toLowerCase().includes(lowerQuery) ||
+              u.userid.toLowerCase().includes(lowerQuery),
+          );
+        }
+
+        if (limit && limit > 0) {
+          filtered = filtered.slice(0, limit);
+        }
+
+        return filtered.map((u) => ({
+          id: u.userid,
+          name: u.name,
+          type: "user" as const,
+        }));
+      } catch {
+        return [];
+      }
+    },
     listGroupsLive: async () => [],
   },
   outbound: wecomOutbound,
