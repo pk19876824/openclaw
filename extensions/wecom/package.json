@@ -1,0 +1,10 @@
+{
+  "name": "@openclaw/extension-wecom",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "WeCom (企业微信) channel plugin for OpenClaw",
+  "exports": {
+    ".": "./index.ts"
+  }
+}
