@@ -192,11 +192,17 @@ export const wecomPlugin: ChannelPlugin<ResolvedWeComAccount> = {
   },
   gateway: {
     startAccount: async (ctx) => {
+      const { monitorWeComProvider } = await import("./monitor.js");
+      const account = resolveWeComAccount({ cfg: ctx.cfg, accountId: ctx.accountId });
+      const port = account.config?.webhookPort ?? null;
+      ctx.setStatus({ accountId: ctx.accountId, port });
       ctx.log?.info(`starting wecom[${ctx.accountId}]`);
-      // TODO: Implement webhook server for receiving messages
-      return () => {
-        ctx.log?.info(`stopping wecom[${ctx.accountId}]`);
-      };
+      return monitorWeComProvider({
+        config: ctx.cfg,
+        runtime: ctx.runtime,
+        abortSignal: ctx.abortSignal,
+        accountId: ctx.accountId,
+      });
     },
   },
 };
