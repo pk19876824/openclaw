@@ -44,19 +44,17 @@ function decryptWeComMessage(
   const key = Buffer.from(encodingAESKey + "=", "base64");
   const encryptBuffer = Buffer.from(encrypt, "base64");
 
-  // Extract IV (first 16 bytes)
-  const iv = encryptBuffer.slice(0, 16);
-
-  // Decrypt
-  const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
+  // Decrypt using key as IV (WeCom uses the key itself as IV)
+  const decipher = crypto.createDecipheriv("aes-256-cbc", key, key.slice(0, 16));
   decipher.setAutoPadding(false);
-  let decrypted = Buffer.concat([decipher.update(encryptBuffer.slice(16)), decipher.final()]);
+  let decrypted = Buffer.concat([decipher.update(encryptBuffer), decipher.final()]);
 
-  // Remove padding
+  // Remove PKCS7 padding
   const pad = decrypted[decrypted.length - 1];
   decrypted = decrypted.slice(0, decrypted.length - pad);
 
-  // Extract message length (4 bytes after random 16 bytes)
+  // Message structure: random(16) + msg_len(4) + msg(msg_len) + corpId
+  // Skip random 16 bytes, read msg_len as network byte order (big-endian)
   const msgLen = decrypted.readUInt32BE(16);
   const message = decrypted.slice(20, 20 + msgLen).toString("utf8");
   const corpId = decrypted.slice(20 + msgLen).toString("utf8");
@@ -108,7 +106,8 @@ async function monitorWeComWebhook({
 
     // Handle URL verification (GET request)
     if (req.method === "GET") {
-      const url = new URL(req.url, `http://${req.headers.host}`);
+      // Parse URL and get URL-decoded parameters
+      const url = new URL(req.url!, `http://${req.headers.host}`);
       const msgSignature = url.searchParams.get("msg_signature");
       const timestamp = url.searchParams.get("timestamp");
       const nonce = url.searchParams.get("nonce");
@@ -121,16 +120,29 @@ async function monitorWeComWebhook({
       }
 
       try {
-        // Verify signature
+        // Verify signature using URL-decoded echostr
         if (!verifyWeComSignature(msgSignature, timestamp, nonce, echostr, token)) {
+          error(`wecom[${accountId}]: signature verification failed`);
           res.statusCode = 401;
           res.end("Unauthorized");
           return;
         }
 
         // Decrypt echostr
-        const { message } = decryptWeComMessage(echostr, encodingAESKey);
+        const { message, corpId } = decryptWeComMessage(echostr, encodingAESKey);
+
+        // Verify corpId matches configuration
+        const expectedCorpId = account.corpId;
+        if (corpId !== expectedCorpId) {
+          error(`wecom[${accountId}]: corpId mismatch, expected=${expectedCorpId}, got=${corpId}`);
+          res.statusCode = 403;
+          res.end("Forbidden");
+          return;
+        }
+
+        // Return plain text without quotes, BOM, or newlines
         res.statusCode = 200;
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
         res.end(message);
         log(`wecom[${accountId}]: URL verification successful`);
       } catch (err) {
