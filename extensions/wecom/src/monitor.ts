@@ -1,5 +1,5 @@
-import * as http from "http";
 import * as crypto from "crypto";
+import * as http from "http";
 import type { ClawdbotConfig, RuntimeEnv, HistoryEntry } from "openclaw/plugin-sdk";
 import { installRequestBodyLimitGuard } from "openclaw/plugin-sdk";
 import { resolveWeComAccount } from "./accounts.js";
@@ -232,15 +232,16 @@ async function monitorWeComWebhook({
 
     abortSignal?.addEventListener("abort", handleAbort, { once: true });
 
-    server.listen(port, host, () => {
-      log(`wecom[${accountId}]: Webhook server listening on ${host}:${port}${path}`);
-    });
-
+    // Attach error handler before listen() so async bind failures (e.g. EADDRINUSE) are caught.
     server.on("error", (err) => {
       error(`wecom[${accountId}]: server error: ${String(err)}`);
       cleanup();
       abortSignal?.removeEventListener("abort", handleAbort);
       reject(err);
+    });
+
+    server.listen(port, host, () => {
+      log(`wecom[${accountId}]: Webhook server listening on ${host}:${port}${path}`);
     });
   });
 }
