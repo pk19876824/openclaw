@@ -98,7 +98,9 @@ async function monitorWeComWebhook({
   const server = http.createServer();
 
   server.on("request", async (req, res) => {
-    if (req.url !== path) {
+    // Extract pathname from URL (ignore query parameters)
+    const urlPath = req.url?.split("?")[0];
+    if (urlPath !== path) {
       res.statusCode = 404;
       res.end("Not Found");
       return;
