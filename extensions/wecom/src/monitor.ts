@@ -213,20 +213,20 @@ async function monitorWeComWebhook({
   httpServers.set(accountId, server);
 
   return new Promise((resolve, reject) => {
-    const cleanup = () => {
-      server.close();
-      httpServers.delete(accountId);
+    const cleanup = (callback?: () => void) => {
+      server.close(() => {
+        httpServers.delete(accountId);
+        callback?.();
+      });
     };
 
     const handleAbort = () => {
       log(`wecom[${accountId}]: abort signal received, stopping`);
-      cleanup();
-      resolve();
+      cleanup(() => resolve());
     };
 
     if (abortSignal?.aborted) {
-      cleanup();
-      resolve();
+      cleanup(() => resolve());
       return;
     }
 
@@ -235,9 +235,8 @@ async function monitorWeComWebhook({
     // Attach error handler before listen() so async bind failures (e.g. EADDRINUSE) are caught.
     server.on("error", (err) => {
       error(`wecom[${accountId}]: server error: ${String(err)}`);
-      cleanup();
       abortSignal?.removeEventListener("abort", handleAbort);
-      reject(err);
+      cleanup(() => reject(err));
     });
 
     server.listen(port, host, () => {
@@ -265,8 +264,8 @@ export async function monitorWeComProvider(opts: MonitorWeComOpts): Promise<() =
   const log = runtime?.log ?? console.log;
   log(`wecom[${account.accountId}]: starting monitor...`);
 
-  // Start webhook server
-  const monitorPromise = monitorWeComWebhook({
+  // Start webhook server and wait for it to be ready
+  await monitorWeComWebhook({
     cfg: config,
     account,
     runtime,
