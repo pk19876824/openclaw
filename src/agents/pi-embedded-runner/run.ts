@@ -848,6 +848,13 @@ export async function runEmbeddedPiAgent(
           const prompt =
             provider === "anthropic" ? scrubAnthropicRefusalMagic(params.prompt) : params.prompt;
 
+          const promptPreview = prompt.length > 500 ? `${prompt.slice(0, 500)}…` : prompt;
+          log.info(
+            `[llm-request] runId=${params.runId} sessionId=${params.sessionId} ` +
+              `provider=${provider} model=${modelId} ` +
+              `promptLength=${prompt.length} preview=${JSON.stringify(promptPreview)}`,
+          );
+
           const attempt = await runEmbeddedAttempt({
             sessionId: params.sessionId,
             sessionKey: params.sessionKey,
@@ -931,6 +938,23 @@ export async function runEmbeddedPiAgent(
             sessionIdUsed,
             lastAssistant,
           } = attempt;
+          if (lastAssistant) {
+            const responseText =
+              Array.isArray(attempt.assistantTexts) && attempt.assistantTexts.length > 0
+                ? attempt.assistantTexts.join("\n\n")
+                : (lastAssistant.text ?? "");
+            const responsePreview =
+              typeof responseText === "string" && responseText.length > 500
+                ? `${responseText.slice(0, 500)}…`
+                : responseText;
+            log.info(
+              `[llm-response] runId=${params.runId} sessionId=${params.sessionId} ` +
+                `provider=${lastAssistant.provider ?? provider} model=${lastAssistant.model ?? model.id} ` +
+                `stopReason=${lastAssistant.stopReason ?? "unknown"} ` +
+                `responseLength=${responseText?.length ?? 0} ` +
+                `preview=${JSON.stringify(responsePreview)}`,
+            );
+          }
           bootstrapPromptWarningSignaturesSeen =
             attempt.bootstrapPromptWarningSignaturesSeen ??
             (attempt.bootstrapPromptWarningSignature

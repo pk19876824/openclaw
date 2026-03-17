@@ -2110,7 +2110,7 @@ export async function runEmbeddedAttempt(
                 systemPromptAddition: assembled.systemPromptAddition,
               });
               applySystemPromptOverrideToSession(activeSession, systemPromptText);
-              log.debug(
+              log.info(
                 `context engine: prepended system prompt addition (${assembled.systemPromptAddition.length} chars)`,
               );
             }

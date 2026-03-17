@@ -510,6 +510,13 @@ async function prepareAgentCommandExecution(
     throw new Error("Message (--message) is required");
   }
   const body = prependInternalEventContext(message, opts.internalEvents);
+  const bodyPreview = body.length > 500 ? `${body.slice(0, 500)}…` : body;
+  log.info(
+    `[ingress] incoming agent message runId=${opts.runId ?? "pending"} ` +
+      `sessionId=${opts.sessionId ?? "new"} sessionKey=${opts.sessionKey ?? "unset"} ` +
+      `channel=${opts.channel ?? "unknown"} length=${body.length} ` +
+      `preview=${JSON.stringify(bodyPreview)}`,
+  );
   if (!opts.to && !opts.sessionId && !opts.sessionKey && !opts.agentId) {
     throw new Error("Pass --to <E.164>, --session-id, or --agent to choose a session");
   }

@@ -339,6 +339,12 @@ export function subscribeEmbeddedPiSession(params: SubscribeEmbeddedPiSessionPar
     if (!cleanedText && filteredMediaUrls.length === 0) {
       return;
     }
+    const preview = cleanedText.length > 200 ? `${cleanedText.slice(0, 200)}…` : cleanedText;
+    log.info(
+      `[tool-result] runId=${params.runId} sessionId=${params.sessionId} ` +
+        `tool=${toolName ?? "unknown"} textLength=${cleanedText.length} ` +
+        `mediaUrls=${filteredMediaUrls.length} preview=${JSON.stringify(preview)}`,
+    );
     try {
       void params.onToolResult({
         text: cleanedText,
