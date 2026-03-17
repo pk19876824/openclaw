@@ -942,7 +942,7 @@ export async function runEmbeddedPiAgent(
             const responseText =
               Array.isArray(attempt.assistantTexts) && attempt.assistantTexts.length > 0
                 ? attempt.assistantTexts.join("\n\n")
-                : (lastAssistant.text ?? "");
+                : "";
             const responsePreview =
               typeof responseText === "string" && responseText.length > 500
                 ? `${responseText.slice(0, 500)}…`
