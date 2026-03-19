@@ -947,10 +947,13 @@ export async function runEmbeddedPiAgent(
               typeof responseText === "string" && responseText.length > 500
                 ? `${responseText.slice(0, 500)}…`
                 : responseText;
+            const usage = lastAssistant.usage as UsageLike | undefined;
             log.info(
               `[llm-response] runId=${params.runId} sessionId=${params.sessionId} ` +
                 `provider=${lastAssistant.provider ?? provider} model=${lastAssistant.model ?? model.id} ` +
                 `stopReason=${lastAssistant.stopReason ?? "unknown"} ` +
+                `inputTokens=${usage?.input ?? 0} outputTokens=${usage?.output ?? 0} ` +
+                `totalTokens=${usage?.total ?? (usage?.input ?? 0) + (usage?.output ?? 0)} ` +
                 `responseLength=${responseText?.length ?? 0} ` +
                 `preview=${JSON.stringify(responsePreview)}`,
             );

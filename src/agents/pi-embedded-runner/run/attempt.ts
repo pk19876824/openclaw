@@ -51,6 +51,7 @@ import { DEFAULT_CONTEXT_TOKENS } from "../../defaults.js";
 import { resolveOpenClawDocsPath } from "../../docs-path.js";
 import { isTimeoutError } from "../../failover-error.js";
 import { resolveImageSanitizationLimits } from "../../image-sanitization.js";
+import { createLlmCallLogger } from "../../llm-call-log.js";
 import { resolveModelAuthMode } from "../../model-auth.js";
 import { normalizeProviderId, resolveDefaultModelForAgent } from "../../model-selection.js";
 import { supportsModelTools } from "../../model-tool-support.js";
@@ -1875,6 +1876,12 @@ export async function runEmbeddedAttempt(
         modelApi: params.model.api,
         workspaceDir: params.workspaceDir,
       });
+      const llmCallLogger = createLlmCallLogger({
+        runId: params.runId,
+        sessionId: activeSession.sessionId,
+        provider: params.provider,
+        modelId: params.modelId,
+      });
 
       // Ollama native API: bypass SDK's streamSimple and use direct /api/chat calls
       // for reliable streaming + tool calling support (#11828).
@@ -2057,6 +2064,10 @@ export async function runEmbeddedAttempt(
         activeSession.agent.streamFn = anthropicPayloadLogger.wrapStreamFn(
           activeSession.agent.streamFn,
         );
+      }
+
+      if (llmCallLogger) {
+        activeSession.agent.streamFn = llmCallLogger.wrapStreamFn(activeSession.agent.streamFn);
       }
 
       try {
