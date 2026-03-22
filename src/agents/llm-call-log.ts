@@ -7,13 +7,23 @@ const log = createSubsystemLogger("agent/llm-call");
 type LlmCallLogConfig = {
   enabled: boolean;
   maxPreviewLength: number;
+  fullOutput: boolean;
 };
 
 function resolveLlmCallLogConfig(): LlmCallLogConfig {
   const enabled =
     process.env.OPENCLAW_LLM_CALL_LOG !== "0" && process.env.OPENCLAW_LLM_CALL_LOG !== "false";
   const maxPreviewLength = parseInt(process.env.OPENCLAW_LLM_CALL_LOG_PREVIEW || "500", 10);
-  return { enabled, maxPreviewLength: Math.max(50, Math.min(5000, maxPreviewLength)) };
+  const fullOutput =
+    process.env.OPENCLAW_LLM_CALL_LOG_FULL === "1" ||
+    process.env.OPENCLAW_LLM_CALL_LOG_FULL === "true";
+  return {
+    enabled,
+    maxPreviewLength: fullOutput
+      ? Number.MAX_SAFE_INTEGER
+      : Math.max(50, Math.min(5000, maxPreviewLength)),
+    fullOutput,
+  };
 }
 
 type LlmCallLogger = {
